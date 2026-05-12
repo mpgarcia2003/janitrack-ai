@@ -1,13 +1,18 @@
-import { createClient } from '@base44/sdk';
-import { appParams } from '@/lib/app-params';
+import { createClient } from "@base44/sdk";
+import { appParams } from "@/lib/app-params";
 
 const { appId, serverUrl, token, functionsVersion } = appParams;
 
-//Create a client with authentication required
+/**
+ * Authenticated SDK client used by every page guarded by RequireAuth.
+ * Public QR pages should NOT import this — they use `base44Public` from
+ * `@/components/PublicAPIClient` so an unauthenticated visitor isn't bounced
+ * to the login flow.
+ */
 export const base44 = createClient({
   appId,
   serverUrl,
   token,
   functionsVersion,
-  requiresAuth: false
+  requiresAuth: true,
 });

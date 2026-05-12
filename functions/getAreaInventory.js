@@ -1,38 +1,63 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.7.1';
+/* global Deno */
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.27";
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+const json = (body, init = {}) =>
+  new Response(JSON.stringify(body), {
+    ...init,
+    headers: { "Content-Type": "application/json", ...CORS, ...(init.headers || {}) },
+  });
+
+/**
+ * Returns the inventory items for the client whose `inventory_qr_token`
+ * matches the caller's token. The caller never names the client_id — it's
+ * derived from the validated token.
+ */
 Deno.serve(async (req) => {
-    try {
-        const base44 = createClientFromRequest(req);
-        const { client_id } = await req.json();
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
 
-        // Get all inventory items for this client (no auth required - public endpoint)
-        const inventory = await base44.asServiceRole.entities.InventoryItem.filter({
-            client_id: client_id,
-            active: true
-        });
+  try {
+    const base44 = createClientFromRequest(req);
+    const { token } = await req.json().catch(() => ({}));
 
-        // Return formatted inventory
-        return Response.json({
-            success: true,
-            items: inventory.map(item => ({
-                id: item.id,
-                name: item.name,
-                sku: item.sku,
-                category: item.category,
-                unit: item.unit,
-                on_hand: item.on_hand,
-                par_level: item.par_level,
-                reorder_point: item.reorder_point,
-                status: item.reorder_point && item.on_hand <= item.reorder_point 
-                    ? 'critical' 
-                    : item.par_level && item.on_hand < item.par_level 
-                    ? 'low' 
-                    : 'good'
-            }))
-        });
+    if (!token || typeof token !== "string") return json({ error: "Token required" }, { status: 400 });
 
-    } catch (error) {
-        console.error('getAreaInventory error:', error);
-        return Response.json({ error: error.message }, { status: 500 });
-    }
+    const clients = await base44.asServiceRole.entities.Client.filter({ inventory_qr_token: token });
+    const client = clients?.[0];
+    if (!client) return json({ error: "Invalid inventory QR" }, { status: 404 });
+
+    const inventory = await base44.asServiceRole.entities.InventoryItem.filter({
+      client_id: client.id,
+      active: true,
+    });
+
+    return json({
+      success: true,
+      client: { id: client.id, name: client.name, code: client.code },
+      items: (inventory ?? []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        sku: item.sku,
+        category: item.category,
+        unit: item.unit,
+        on_hand: item.on_hand,
+        par_level: item.par_level,
+        reorder_point: item.reorder_point,
+        status:
+          item.reorder_point && item.on_hand <= item.reorder_point
+            ? "critical"
+            : item.par_level && item.on_hand < item.par_level
+            ? "low"
+            : "good",
+      })),
+    });
+  } catch (error) {
+    console.error("getAreaInventory error:", error?.message ?? error);
+    return json({ error: error?.message ?? "Internal error" }, { status: 500 });
+  }
 });

@@ -4,122 +4,98 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Star, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { toast } from "@/lib/toast";
+import { reportError } from "@/lib/error-reporting";
+import { trackEvent, EVENTS } from "@/lib/analytics";
+
+function readTokens() {
+  if (typeof window === "undefined") return { areaToken: null, facilityToken: null };
+  const search = new URLSearchParams(window.location.search);
+  const hashParams =
+    window.location.hash && window.location.hash.includes("?")
+      ? new URLSearchParams(window.location.hash.split("?")[1])
+      : new URLSearchParams();
+  return {
+    areaToken: search.get("token") ?? hashParams.get("token"),
+    facilityToken: search.get("facilityToken") ?? hashParams.get("facilityToken"),
+  };
+}
 
 export default function FeedbackQR() {
-  const [token, setToken] = useState(null);
+  const [areaToken, setAreaToken] = useState(null);
   const [facilityToken, setFacilityToken] = useState(null);
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    let areaToken = urlParams.get('token');
-    if (!areaToken && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
-      areaToken = hashParams.get('token');
-    }
-    
-    let facToken = urlParams.get('facilityToken');
-    if (!facToken && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.split('?')[1]);
-      facToken = hashParams.get('facilityToken');
-    }
-    
-    console.log('Feedback tokens:', { areaToken, facilityToken: facToken });
-    setToken(areaToken);
-    setFacilityToken(facToken);
+    const { areaToken: a, facilityToken: f } = readTokens();
+    setAreaToken(a);
+    setFacilityToken(f);
   }, []);
 
-  const { data: area, isLoading: areaLoading } = useQuery({
-    queryKey: ['area-feedback', token],
-    queryFn: async () => {
-      if (!token) return null;
-      const areas = await base44Public.entities.Area.list();
-      return areas.find(a => a.qr_token === token) || null;
-    },
-    enabled: !!token,
-    retry: false
-  });
+  const isFacilityScope = !!facilityToken;
+  const activeToken = isFacilityScope ? facilityToken : areaToken;
+  const tokenType = isFacilityScope ? "facility-feedback" : "area";
 
-  const { data: facilityClient, isLoading: facilityLoading } = useQuery({
-    queryKey: ['facility-feedback', facilityToken],
+  const tokenQuery = useQuery({
+    queryKey: ["feedback-token", tokenType, activeToken],
     queryFn: async () => {
-      if (!facilityToken) return null;
-      const clients = await base44Public.entities.Client.list();
-      return clients.find(c => c.feedback_qr_token === facilityToken) || null;
-    },
-    enabled: !!facilityToken,
-    retry: false
-  });
-
-  const { data: client } = useQuery({
-    queryKey: ['client-feedback', area?.client_id],
-    queryFn: async () => {
-      if (!area?.client_id) return null;
-      const clients = await base44Public.entities.Client.list();
-      return clients.find(c => c.id === area.client_id) || null;
-    },
-    enabled: !!area?.client_id,
-    retry: false
-  });
-
-  const submitFeedbackMutation = useMutation({
-    mutationFn: async (data) => {
-      const isFacilityFeedback = !!facilityClient;
-      
-      return await base44Public.entities.Feedback.create({
-        tenant_id: isFacilityFeedback ? facilityClient.tenant_id : area.tenant_id,
-        client_id: isFacilityFeedback ? facilityClient.id : area.client_id,
-        area_id: isFacilityFeedback ? null : area.id,
-        rating: data.rating,
-        comment: data.comment,
-        submitted_by_name: data.name || 'Anonymous',
-        submitted_by_email: data.email || null,
-        ip_address: 'captured-by-system',
-        user_agent: navigator.userAgent,
-        feedback_timestamp: new Date().toISOString()
+      const response = await base44Public.functions.invoke("validateQRToken", {
+        token: activeToken,
+        tokenType,
       });
+      if (response.data?.error) throw new Error(response.data.error);
+      return response.data;
     },
-    onSuccess: () => {
+    enabled: !!activeToken,
+    retry: false,
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: async (values) => {
+      const response = await base44Public.functions.invoke("recordFeedback", {
+        token: activeToken,
+        scope: isFacilityScope ? "facility" : "area",
+        rating: values.rating,
+        comment: values.comment,
+        submitted_by_name: values.name,
+        submitted_by_email: values.email,
+      });
+      if (response.data?.error) throw new Error(response.data.error);
+      return response.data;
+    },
+    onSuccess: (data) => {
       setSuccess(true);
+      trackEvent(EVENTS.FEEDBACK_SUBMITTED, { scope: isFacilityScope ? "facility" : "area", feedback_id: data?.feedback_id });
     },
+    onError: (error) => reportError(error, { where: "FeedbackQR.recordFeedback" }),
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (rating === 0) {
-      alert('Please select a rating');
+      toast.error("Please select a rating");
       return;
     }
-
     const formData = new FormData(e.target);
-    submitFeedbackMutation.mutate({
+    submitMutation.mutate({
       rating,
-      comment: formData.get('comment') || '',
-      name: formData.get('name') || '',
-      email: formData.get('email') || ''
+      comment: formData.get("comment") ?? "",
+      name: formData.get("name") ?? "",
+      email: formData.get("email") ?? "",
     });
   };
 
-  const isFacilityFeedback = !!facilityToken && !!facilityClient;
-  const isAreaFeedback = !!token && !!area;
-  const isLoading = (!!token && areaLoading) || (!!facilityToken && facilityLoading);
-  
-  const locationName = isFacilityFeedback 
-    ? facilityClient?.name 
-    : area?.name;
-  const clientName = isFacilityFeedback 
-    ? facilityClient?.name 
-    : client?.name;
+  const locationName = isFacilityScope ? tokenQuery.data?.client?.name : tokenQuery.data?.area?.name;
+  const clientName = tokenQuery.data?.client?.name;
 
-  if (!token && !facilityToken) {
+  if (!activeToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center p-4">
+      <Wrapper bg="from-purple-50 to-pink-100">
         <Card className="max-w-md w-full shadow-xl">
           <CardHeader className="text-center">
             <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -133,24 +109,24 @@ export default function FeedbackQR() {
             </p>
           </CardContent>
         </Card>
-      </div>
+      </Wrapper>
     );
   }
 
-  if (isLoading) {
+  if (tokenQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center">
+      <Wrapper bg="from-purple-50 to-pink-100">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" aria-hidden="true" />
+          <p className="text-gray-600">Loading…</p>
         </div>
-      </div>
+      </Wrapper>
     );
   }
 
-  if (!isAreaFeedback && !isFacilityFeedback) {
+  if (tokenQuery.isError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center p-4">
+      <Wrapper bg="from-purple-50 to-pink-100">
         <Card className="max-w-md w-full shadow-xl">
           <CardHeader className="text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -160,44 +136,36 @@ export default function FeedbackQR() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-gray-600 mb-4">
-              This QR code does not match any location in the system.
+              {tokenQuery.error?.message ?? "This QR code does not match any location."}
             </p>
           </CardContent>
         </Card>
-      </div>
+      </Wrapper>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
+      <Wrapper bg="from-emerald-50 to-emerald-100">
         <Card className="max-w-md w-full shadow-xl">
           <CardHeader className="text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-12 h-12 text-green-600" />
+            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-12 h-12 text-emerald-600" />
             </div>
-            <CardTitle className="text-3xl text-green-700">Thank You!</CardTitle>
+            <CardTitle className="text-3xl text-emerald-700">Thank You!</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <p className="text-lg text-gray-700">
-              Your feedback has been submitted
-            </p>
+            <p className="text-lg text-gray-700">Your feedback has been submitted</p>
             <div className="flex justify-center">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
-                  className={`w-8 h-8 ${
-                    star <= rating
-                      ? 'fill-yellow-400 text-yellow-400'
-                      : 'text-gray-300'
-                  }`}
+                  className={`w-8 h-8 ${star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
                 />
               ))}
             </div>
-            {isFacilityFeedback ? (
-              <p className="text-gray-600">
-                Your feedback helps {clientName} maintain quality
-              </p>
+            {isFacilityScope ? (
+              <p className="text-gray-600">Your feedback helps {clientName} maintain quality</p>
             ) : (
               <p className="text-gray-600">
                 Your feedback helps keep <strong>{locationName}</strong> clean
@@ -205,7 +173,7 @@ export default function FeedbackQR() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </Wrapper>
     );
   }
 
@@ -216,35 +184,30 @@ export default function FeedbackQR() {
           <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                <Star className="w-7 h-7" />
+                <Star className="w-7 h-7" aria-hidden="true" />
               </div>
               <div>
                 <CardTitle className="text-2xl">
-                  {isFacilityFeedback ? 'Rate This Facility' : 'Rate This Area'}
+                  {isFacilityScope ? "Rate This Facility" : "Rate This Area"}
                 </CardTitle>
-                {isFacilityFeedback ? (
-                  <p className="text-purple-100 text-sm">{clientName}</p>
-                ) : (
-                  <>
-                    <p className="text-purple-100 text-sm">{locationName}</p>
-                    {client && <p className="text-purple-100 text-xs">{clientName}</p>}
-                  </>
-                )}
+                <p className="text-purple-100 text-sm">{locationName}</p>
+                {!isFacilityScope && clientName ? (
+                  <p className="text-purple-100 text-xs">{clientName}</p>
+                ) : null}
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="text-center">
-                <Label className="text-lg mb-4 block">
-                  How would you rate the cleanliness?
-                </Label>
+                <Label className="text-lg mb-4 block">How would you rate the cleanliness?</Label>
                 <div className="flex justify-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       type="button"
+                      aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
                       onClick={() => setRating(star)}
                       onMouseEnter={() => setHoveredRating(star)}
                       onMouseLeave={() => setHoveredRating(0)}
@@ -252,23 +215,21 @@ export default function FeedbackQR() {
                     >
                       <Star
                         className={`w-12 h-12 ${
-                          star <= (hoveredRating || rating)
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
+                          star <= (hoveredRating || rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
                         }`}
                       />
                     </button>
                   ))}
                 </div>
-                {rating > 0 && (
+                {rating > 0 ? (
                   <p className="mt-2 text-sm font-medium text-gray-700">
-                    {rating === 5 && "Excellent! ⭐"}
-                    {rating === 4 && "Very Good 👍"}
+                    {rating === 5 && "Excellent!"}
+                    {rating === 4 && "Very Good"}
                     {rating === 3 && "Good"}
                     {rating === 2 && "Needs Improvement"}
                     {rating === 1 && "Poor"}
                   </p>
-                )}
+                ) : null}
               </div>
 
               <div>
@@ -276,7 +237,7 @@ export default function FeedbackQR() {
                 <Textarea
                   id="comment"
                   name="comment"
-                  placeholder="Tell us more about your experience..."
+                  placeholder="Tell us more about your experience…"
                   className="mt-2 h-24"
                 />
               </div>
@@ -284,39 +245,33 @@ export default function FeedbackQR() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Your Name (Optional)</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    placeholder="Name"
-                    className="mt-2"
-                  />
+                  <Input id="name" name="name" type="text" placeholder="Name" className="mt-2" />
                 </div>
                 <div>
                   <Label htmlFor="email">Your Email (Optional)</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="email@example.com"
-                    className="mt-2"
-                  />
+                  <Input id="email" name="email" type="email" placeholder="email@example.com" className="mt-2" />
                 </div>
               </div>
 
+              {submitMutation.isError ? (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-lg">
+                  {submitMutation.error?.message ?? "Failed to submit feedback."}
+                </p>
+              ) : null}
+
               <Button
                 type="submit"
-                disabled={rating === 0 || submitFeedbackMutation.isPending}
+                disabled={rating === 0 || submitMutation.isPending}
                 className="w-full h-14 text-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               >
-                {submitFeedbackMutation.isPending ? (
+                {submitMutation.isPending ? (
                   <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Submitting...
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" aria-hidden="true" />
+                    Submitting…
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="w-5 h-5 mr-2" />
+                    <CheckCircle className="w-5 h-5 mr-2" aria-hidden="true" />
                     Submit Feedback
                   </>
                 )}
@@ -326,5 +281,11 @@ export default function FeedbackQR() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function Wrapper({ bg, children }) {
+  return (
+    <div className={`min-h-screen bg-gradient-to-br ${bg} flex items-center justify-center p-4`}>{children}</div>
   );
 }
