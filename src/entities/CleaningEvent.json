@@ -34,6 +34,10 @@
       "format": "date-time",
       "description": "Client-side time for drift detection"
     },
+    "timezone": {
+      "type": "string",
+      "description": "IANA timezone of scan location (e.g., America/New_York)"
+    },
     "ip_address": {
       "type": "string"
     },

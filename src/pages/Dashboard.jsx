@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Clock,
   CheckCircle2,
-  Activity
+  Activity,
+  Rocket
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, subDays, isAfter, isBefore, differenceInMinutes } from "date-fns";

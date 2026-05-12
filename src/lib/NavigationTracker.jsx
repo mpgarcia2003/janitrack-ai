@@ -1,50 +1,62 @@
-import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { useAuth } from './AuthContext';
-import { base44 } from '@/api/base44Client';
-import { pagesConfig } from '@/pages.config';
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
+import { base44 } from "@/api/base44Client";
+import { trackEvent } from "@/lib/analytics";
+
+const ROUTE_TO_PAGE = {
+  "/": "Home",
+  "/Home": "Home",
+  "/Dashboard": "Dashboard",
+  "/Clients": "Clients",
+  "/Areas": "Areas",
+  "/Feedback": "Feedback",
+  "/Inventory": "Inventory",
+  "/InventoryReports": "InventoryReports",
+  "/Projects": "Projects",
+  "/Reports": "Reports",
+  "/Settings": "Settings",
+  "/Billing": "Billing",
+  "/SuperAdmin": "SuperAdmin",
+  "/TenantSignup": "TenantSignup",
+  "/ScanCheckIn": "ScanCheckIn",
+  "/FeedbackQR": "FeedbackQR",
+  "/NewProjectQR": "NewProjectQR",
+  "/InventoryAccess": "InventoryAccess",
+};
+
+function resolvePageName(pathname) {
+  if (!pathname) return null;
+  const exact = ROUTE_TO_PAGE[pathname];
+  if (exact) return exact;
+  const lower = pathname.toLowerCase();
+  const match = Object.entries(ROUTE_TO_PAGE).find(([key]) => key.toLowerCase() === lower);
+  return match ? match[1] : null;
+}
 
 export default function NavigationTracker() {
-    const location = useLocation();
-    const { isAuthenticated } = useAuth();
-    const { Pages, mainPage } = pagesConfig;
-    const mainPageKey = mainPage ?? Object.keys(Pages)[0];
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
-    // Post navigation changes to parent window
-    useEffect(() => {
-        window.parent?.postMessage({
-            type: "app_changed_url",
-            url: window.location.href
-        }, '*');
-    }, [location]);
+  // Notify parent frame (used by base44's editor preview)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.parent?.postMessage({ type: "app_changed_url", url: window.location.href }, "*");
+  }, [location]);
 
-    // Log user activity when navigating to a page
-    useEffect(() => {
-        // Extract page name from pathname
-        const pathname = location.pathname;
-        let pageName;
-        
-        if (pathname === '/' || pathname === '') {
-            pageName = mainPageKey;
-        } else {
-            // Remove leading slash and get the first segment
-            const pathSegment = pathname.replace(/^\//, '').split('/')[0];
-            
-            // Try case-insensitive lookup in Pages config
-            const pageKeys = Object.keys(Pages);
-            const matchedKey = pageKeys.find(
-                key => key.toLowerCase() === pathSegment.toLowerCase()
-            );
-            
-            pageName = matchedKey || null;
-        }
+  // Log activity + emit pageview event
+  useEffect(() => {
+    const pageName = resolvePageName(location.pathname);
+    if (!pageName) return;
 
-        if (isAuthenticated && pageName) {
-            base44.appLogs.logUserInApp(pageName).catch(() => {
-                // Silently fail - logging shouldn't break the app
-            });
-        }
-    }, [location, isAuthenticated, Pages, mainPageKey]);
+    trackEvent("page_view", { page: pageName, pathname: location.pathname });
 
-    return null;
+    if (isAuthenticated && base44?.appLogs?.logUserInApp) {
+      base44.appLogs.logUserInApp(pageName).catch(() => {
+        // Logging is best-effort; never break navigation on a logger failure.
+      });
+    }
+  }, [location, isAuthenticated]);
+
+  return null;
 }
