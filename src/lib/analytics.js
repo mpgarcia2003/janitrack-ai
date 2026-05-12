@@ -13,7 +13,6 @@ export function trackEvent(name, properties = {}) {
   if (!name) return;
 
   if (!isProd) {
-    // eslint-disable-next-line no-console
     console.info("[trackEvent]", name, properties);
   }
   // Production: no-op. Wire your provider here.

@@ -22,10 +22,8 @@ export function reportError(error, context = {}) {
   };
 
   if (!isProd) {
-    // eslint-disable-next-line no-console
     console.error("[reportError]", payload);
   } else {
-    // eslint-disable-next-line no-console
     console.error("[reportError]", error?.message ?? error, context);
   }
 }

@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FolderKanban, Plus, AlertCircle } from "lucide-react";
+import { FolderKanban, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isBefore } from "date-fns";
 
