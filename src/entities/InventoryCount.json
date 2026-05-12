@@ -1,0 +1,48 @@
+{
+  "name": "InventoryCount",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "inventory_id": {
+      "type": "string"
+    },
+    "counted_by_id": {
+      "type": "string"
+    },
+    "counted_by_name": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number"
+    },
+    "previous_quantity": {
+      "type": "number"
+    },
+    "photo_url": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "count_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "client_id",
+    "inventory_id",
+    "counted_by_name",
+    "quantity",
+    "count_timestamp"
+  ]
+}

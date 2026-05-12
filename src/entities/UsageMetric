@@ -1,0 +1,49 @@
+{
+  "name": "UsageMetric",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Usage counts",
+      "properties": {
+        "total_clients": {
+          "type": "number"
+        },
+        "total_areas": {
+          "type": "number"
+        },
+        "total_users": {
+          "type": "number"
+        },
+        "total_projects": {
+          "type": "number"
+        },
+        "total_inventory_items": {
+          "type": "number"
+        },
+        "total_cleaning_events": {
+          "type": "number"
+        },
+        "total_feedbacks": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  "required": [
+    "tenant_id",
+    "period_start",
+    "period_end"
+  ]
+}

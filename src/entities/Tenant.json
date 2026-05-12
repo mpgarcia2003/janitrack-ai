@@ -1,0 +1,67 @@
+{
+  "name": "Tenant",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Company name"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-friendly identifier"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "Company logo URL for QR codes"
+    },
+    "tagline": {
+      "type": "string",
+      "description": "Company tagline (e.g., 'Clean Spaces \u2022 Smooth Operations \u2022 Trusted Care')"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Primary contact name for QR codes"
+    },
+    "contact_email": {
+      "type": "string",
+      "description": "Contact email for QR codes"
+    },
+    "contact_phone": {
+      "type": "string",
+      "description": "Contact phone for QR codes"
+    },
+    "brand_color": {
+      "type": "string",
+      "description": "Hex color for accent lines (e.g., '#00FF00')",
+      "default": "#10b981"
+    },
+    "company_name_color": {
+      "type": "string",
+      "description": "Hex color for company name text (e.g., '#00FF00')",
+      "default": "#000000"
+    },
+    "settings": {
+      "type": "object",
+      "description": "JSON config for tenant-level settings",
+      "properties": {
+        "timezone": {
+          "type": "string"
+        },
+        "alertEmail": {
+          "type": "string"
+        },
+        "alertPhone": {
+          "type": "string"
+        }
+      }
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "slug"
+  ]
+}

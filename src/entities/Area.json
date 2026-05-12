@@ -1,0 +1,58 @@
+{
+  "name": "Area",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "Area name (e.g., 'Men's Room 1F', 'Cafeteria')"
+    },
+    "location_desc": {
+      "type": "string",
+      "description": "Additional location details"
+    },
+    "qr_token": {
+      "type": "string",
+      "description": "Unique token for QR code generation"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "trouble"
+      ],
+      "default": "normal",
+      "description": "Escalation status"
+    },
+    "cadence_minutes": {
+      "type": "number",
+      "description": "Required cleaning frequency (minutes)",
+      "default": 240
+    },
+    "last_cleaned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Most recent cleaning event"
+    },
+    "complaint_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of complaints/issues"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "tenant_id",
+    "client_id",
+    "name",
+    "qr_token"
+  ]
+}

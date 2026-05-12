@@ -1,0 +1,74 @@
+{
+  "name": "CleaningEvent",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "area_id": {
+      "type": "string"
+    },
+    "cleaner_id": {
+      "type": "string",
+      "description": "User ID if logged in"
+    },
+    "cleaner_name": {
+      "type": "string",
+      "description": "Name entered by cleaner"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string"
+    },
+    "server_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "device_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Client-side time for drift detection"
+    },
+    "timezone": {
+      "type": "string",
+      "description": "IANA timezone of scan location (e.g., America/New_York)"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "user_agent": {
+      "type": "string"
+    },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
+    },
+    "location_accuracy": {
+      "type": "number",
+      "description": "GPS accuracy in meters"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "flagged",
+        "verified"
+      ],
+      "default": "completed"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "client_id",
+    "area_id",
+    "cleaner_name",
+    "server_timestamp"
+  ]
+}
