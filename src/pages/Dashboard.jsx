@@ -1,5 +1,5 @@
 import React from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,31 +28,31 @@ export default function Dashboard() {
 
   const eventsQuery = useQuery({
     queryKey: ["cleaning-events", tenantId],
-    queryFn: () => base44.entities.CleaningEvent.filter({ tenant_id: tenantId }, "-created_date", 100),
+    queryFn: () => entities.CleaningEvent.filter({ tenant_id: tenantId }, "-created_at", 100),
     enabled: !!tenantId,
   });
 
   const areasQuery = useQuery({
     queryKey: ["areas", tenantId],
-    queryFn: () => base44.entities.Area.filter({ tenant_id: tenantId }),
+    queryFn: () => entities.Area.filter({ tenant_id: tenantId }),
     enabled: !!tenantId,
   });
 
   const clientsQuery = useQuery({
     queryKey: ["clients", tenantId],
-    queryFn: () => base44.entities.Client.filter({ tenant_id: tenantId }),
+    queryFn: () => entities.Client.filter({ tenant_id: tenantId }),
     enabled: !!tenantId,
   });
 
   const inventoryQuery = useQuery({
     queryKey: ["inventory", tenantId],
-    queryFn: () => base44.entities.InventoryItem.filter({ tenant_id: tenantId }),
+    queryFn: () => entities.InventoryItem.filter({ tenant_id: tenantId }),
     enabled: !!tenantId,
   });
 
   const projectsQuery = useQuery({
     queryKey: ["projects", tenantId],
-    queryFn: () => base44.entities.Project.filter({ tenant_id: tenantId }, "-created_date"),
+    queryFn: () => entities.Project.filter({ tenant_id: tenantId }, "-created_at"),
     enabled: !!tenantId,
   });
 
@@ -69,7 +69,7 @@ export default function Dashboard() {
   }));
 
   const last24hEvents = enrichedEvents.filter((e) =>
-    isAfter(new Date(e.created_date), subDays(new Date(), 1))
+    isAfter(new Date(e.created_at), subDays(new Date(), 1))
   );
   const troubleAreas = areas.filter((a) => a.risk_level === "trouble" || a.complaint_count > 2);
   const lowInventory = inventory.filter((i) => i.reorder_point && i.on_hand <= i.reorder_point);

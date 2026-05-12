@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44Public } from "@/components/PublicAPIClient";
+import { apiInvoke } from "@/lib/api-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,7 +44,7 @@ export default function FeedbackQR() {
   const tokenQuery = useQuery({
     queryKey: ["feedback-token", tokenType, activeToken],
     queryFn: async () => {
-      const response = await base44Public.functions.invoke("validateQRToken", {
+      const response = await apiInvoke("validate-qr-token", {
         token: activeToken,
         tokenType,
       });
@@ -57,7 +57,7 @@ export default function FeedbackQR() {
 
   const submitMutation = useMutation({
     mutationFn: async (values) => {
-      const response = await base44Public.functions.invoke("recordFeedback", {
+      const response = await apiInvoke("record-feedback", {
         token: activeToken,
         scope: isFacilityScope ? "facility" : "area",
         rating: values.rating,

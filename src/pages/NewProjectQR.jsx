@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { base44Public } from "@/components/PublicAPIClient";
+import { apiInvoke } from "@/lib/api-client";
+import { uploadFile } from "@/lib/storage";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,7 @@ export default function NewProjectQR() {
   const clientQuery = useQuery({
     queryKey: ["project-token", token],
     queryFn: async () => {
-      const response = await base44Public.functions.invoke("validateProjectToken", { token });
+      const response = await apiInvoke("validate-project-token", { token });
       if (response.data?.error) throw new Error(response.data.error);
       return response.data.client;
     },
@@ -50,12 +51,12 @@ export default function NewProjectQR() {
       let file_urls = [];
       if (files.length > 0) {
         for (const file of files) {
-          const { file_url } = await base44Public.integrations.Core.UploadFile({ file });
+          const { file_url } = await uploadFile({ file, folder: "projects" });
           file_urls.push(file_url);
         }
       }
 
-      const response = await base44Public.functions.invoke("createWorkRequest", {
+      const response = await apiInvoke("create-work-request", {
         token,
         title: values.title,
         description: values.description,

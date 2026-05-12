@@ -1,5 +1,6 @@
 import React from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
+import { apiInvoke } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ export default function Billing() {
     queryKey: ["my-subscription", tenantId],
     queryFn: async () => {
       if (!tenantId) return null;
-      const subs = await base44.entities.Subscription.filter({ tenant_id: tenantId });
+      const subs = await entities.Subscription.filter({ tenant_id: tenantId });
       return subs?.[0] ?? null;
     },
     enabled: !!tenantId,
@@ -33,7 +34,7 @@ export default function Billing() {
     queryFn: async () => {
       const planId = subscriptionQuery.data?.plan_id;
       if (!planId) return null;
-      const plans = await base44.entities.SubscriptionPlan.filter({ id: planId });
+      const plans = await entities.SubscriptionPlan.filter({ id: planId });
       return plans?.[0] ?? null;
     },
     enabled: !!subscriptionQuery.data?.plan_id,
@@ -41,22 +42,22 @@ export default function Billing() {
 
   const clientsQuery = useQuery({
     queryKey: ["my-clients", tenantId],
-    queryFn: () => base44.entities.Client.filter({ tenant_id: tenantId }),
+    queryFn: () => entities.Client.filter({ tenant_id: tenantId }),
     enabled: !!tenantId,
   });
   const areasQuery = useQuery({
     queryKey: ["my-areas", tenantId],
-    queryFn: () => base44.entities.Area.filter({ tenant_id: tenantId }),
+    queryFn: () => entities.Area.filter({ tenant_id: tenantId }),
     enabled: !!tenantId,
   });
   const usersQuery = useQuery({
     queryKey: ["my-users", tenantId],
-    queryFn: () => base44.entities.User.filter({ tenant_id: tenantId }),
+    queryFn: () => entities.User.filter({ tenant_id: tenantId }),
     enabled: !!tenantId,
   });
   const projectsQuery = useQuery({
     queryKey: ["my-projects", tenantId],
-    queryFn: () => base44.entities.Project.filter({ tenant_id: tenantId }),
+    queryFn: () => entities.Project.filter({ tenant_id: tenantId }),
     enabled: !!tenantId,
   });
 
@@ -80,7 +81,7 @@ export default function Billing() {
 
   const handleManageBilling = async () => {
     try {
-      const { data } = await base44.functions.invoke("createCustomerPortal");
+      const { data } = await apiInvoke("create-customer-portal");
       if (data?.url) window.location.href = data.url;
       else throw new Error(data?.error ?? "No portal URL returned");
     } catch (error) {

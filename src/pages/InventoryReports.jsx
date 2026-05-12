@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,21 +39,21 @@ export default function InventoryReports() {
     queryKey: ["inventory", tenantId],
     queryFn: () =>
       tenantId
-        ? base44.entities.InventoryItem.filter({ tenant_id: tenantId }, "-created_date")
+        ? entities.InventoryItem.filter({ tenant_id: tenantId }, "-created_at")
         : Promise.resolve([]),
     enabled: !!tenantId,
   });
   const clientsQuery = useQuery({
     queryKey: ["clients", tenantId],
     queryFn: () =>
-      tenantId ? base44.entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
+      tenantId ? entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
     enabled: !!tenantId,
   });
   const countsQuery = useQuery({
     queryKey: ["inventory-counts", tenantId],
     queryFn: () =>
       tenantId
-        ? base44.entities.InventoryCount.filter({ tenant_id: tenantId }, "-count_timestamp", 100)
+        ? entities.InventoryCount.filter({ tenant_id: tenantId }, "-count_timestamp", 100)
         : Promise.resolve([]),
     enabled: !!tenantId,
   });
@@ -61,7 +61,7 @@ export default function InventoryReports() {
     queryKey: ["inventory-usage", tenantId],
     queryFn: () =>
       tenantId
-        ? base44.entities.InventoryUsage.filter({ tenant_id: tenantId }, "-usage_timestamp", 100)
+        ? entities.InventoryUsage.filter({ tenant_id: tenantId }, "-usage_timestamp", 100)
         : Promise.resolve([]),
     enabled: !!tenantId,
   });

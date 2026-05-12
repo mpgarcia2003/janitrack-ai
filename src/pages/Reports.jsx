@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,20 +28,20 @@ export default function Reports() {
     queryKey: ["cleaning-events-report", tenantId],
     queryFn: () =>
       tenantId
-        ? base44.entities.CleaningEvent.filter({ tenant_id: tenantId }, "-created_date", 500)
+        ? entities.CleaningEvent.filter({ tenant_id: tenantId }, "-created_at", 500)
         : Promise.resolve([]),
     enabled: !!tenantId,
   });
   const clientsQuery = useQuery({
     queryKey: ["clients", tenantId],
     queryFn: () =>
-      tenantId ? base44.entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
+      tenantId ? entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
     enabled: !!tenantId,
   });
   const areasQuery = useQuery({
     queryKey: ["areas", tenantId],
     queryFn: () =>
-      tenantId ? base44.entities.Area.filter({ tenant_id: tenantId }) : Promise.resolve([]),
+      tenantId ? entities.Area.filter({ tenant_id: tenantId }) : Promise.resolve([]),
     enabled: !!tenantId,
   });
 
@@ -82,7 +82,7 @@ export default function Reports() {
 
   const dateRange = getDateRange();
   const filteredEvents = cleaningEvents.filter((e) => {
-    const eventDate = new Date(e.created_date);
+    const eventDate = new Date(e.created_at);
     const inRange = eventDate >= dateRange.start && eventDate <= dateRange.end;
     const matchesClient = selectedClient === "all" || e.client_id === selectedClient;
     return inRange && matchesClient;
@@ -106,11 +106,11 @@ export default function Reports() {
     let avgMinutesBetween = null;
     if (areaEvents.length > 1) {
       const sorted = [...areaEvents].sort(
-        (a, b) => new Date(a.created_date) - new Date(b.created_date)
+        (a, b) => new Date(a.created_at) - new Date(b.created_at)
       );
       let total = 0;
       for (let i = 1; i < sorted.length; i++) {
-        total += differenceInMinutes(new Date(sorted[i].created_date), new Date(sorted[i - 1].created_date));
+        total += differenceInMinutes(new Date(sorted[i].created_at), new Date(sorted[i - 1].created_at));
       }
       avgMinutesBetween = Math.round(total / (sorted.length - 1));
     }
@@ -131,8 +131,8 @@ export default function Reports() {
         const area = areas.find((a) => a.id === e.area_id);
         const client = clients.find((c) => c.id === e.client_id);
         return [
-          format(new Date(e.created_date), "yyyy-MM-dd"),
-          format(new Date(e.created_date), "HH:mm:ss"),
+          format(new Date(e.created_at), "yyyy-MM-dd"),
+          format(new Date(e.created_at), "HH:mm:ss"),
           area?.name ?? "Unknown",
           client?.name ?? "Unknown",
           e.cleaner_name,

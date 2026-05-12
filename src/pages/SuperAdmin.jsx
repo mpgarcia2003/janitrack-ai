@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,19 +17,19 @@ export default function SuperAdmin() {
 
   const tenantsQuery = useQuery({
     queryKey: ["all-tenants"],
-    queryFn: () => base44.entities.Tenant.list("-created_date"),
+    queryFn: () => entities.Tenant.list("-created_at"),
   });
   const subscriptionsQuery = useQuery({
     queryKey: ["all-subscriptions"],
-    queryFn: () => base44.entities.Subscription.list("-created_date"),
+    queryFn: () => entities.Subscription.list("-created_at"),
   });
   const plansQuery = useQuery({
     queryKey: ["all-plans"],
-    queryFn: () => base44.entities.SubscriptionPlan.list(),
+    queryFn: () => entities.SubscriptionPlan.list(),
   });
   const usersQuery = useQuery({
     queryKey: ["all-users"],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => entities.User.list(),
   });
 
   const anyError = tenantsQuery.error ?? subscriptionsQuery.error ?? plansQuery.error ?? usersQuery.error;
@@ -162,7 +162,7 @@ export default function SuperAdmin() {
                           </TableCell>
                           <TableCell>{userCount}</TableCell>
                           <TableCell className="text-sm text-gray-600">
-                            {format(new Date(tenant.created_date), "MMM d, yyyy")}
+                            {format(new Date(tenant.created_at), "MMM d, yyyy")}
                           </TableCell>
                           <TableCell className="font-semibold">${mrr}</TableCell>
                           <TableCell>

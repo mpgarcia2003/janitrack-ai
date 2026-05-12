@@ -7,7 +7,7 @@ function LoadingScreen({ label = "Loading…" }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="text-center">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-3" />
+        <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mx-auto mb-3" aria-hidden="true" />
         <p className="text-slate-600">{label}</p>
       </div>
     </div>
@@ -15,49 +15,35 @@ function LoadingScreen({ label = "Loading…" }) {
 }
 
 /**
- * Gate that requires the user to be authenticated. If not, kick off the SDK
- * login redirect. While the check is in flight, render a spinner.
+ * Gate that requires an authenticated session. If not, redirect to /Login
+ * and remember the requested URL so we can come back after sign-in.
  */
 export function RequireAuth({ children }) {
-  const { isLoadingAuth, isLoadingPublicSettings, isAuthenticated, navigateToLogin } = useAuth();
-
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return <LoadingScreen label="Checking your session…" />;
-  }
-
+  const { isLoadingAuth, isAuthenticated } = useAuth();
+  const location = useLocation();
+  if (isLoadingAuth) return <LoadingScreen label="Checking your session…" />;
   if (!isAuthenticated) {
-    navigateToLogin();
-    return <LoadingScreen label="Redirecting to login…" />;
+    return <Navigate to="/Login" replace state={{ from: location.pathname + location.search }} />;
   }
-
   return children;
 }
 
 /**
- * Gate that requires the authenticated user to belong to a tenant. If they
- * don't, redirect to /TenantSignup so they can finish onboarding. Pages mounted
- * underneath this guard can safely assume `user.tenant_id` is set.
+ * Gate that requires the authenticated user to have a tenant. If not, send
+ * them to /TenantSignup so they can create one.
  */
 export function RequireTenant({ children }) {
   const { user } = useAuth();
   const location = useLocation();
-  const path = location.pathname.toLowerCase();
-  const onTenantSignup = path.startsWith("/tenantsignup");
+  const onTenantSignup = location.pathname.toLowerCase().startsWith("/tenantsignup");
 
-  if (!user) {
-    return <LoadingScreen label="Loading account…" />;
-  }
-
+  if (!user) return <LoadingScreen label="Loading account…" />;
   if (!user.tenant_id && !onTenantSignup) {
     return <Navigate to="/TenantSignup" replace />;
   }
-
   return children;
 }
 
-/**
- * Public route — always renders children, no auth check.
- */
 export function PublicRoute({ children }) {
   return children;
 }

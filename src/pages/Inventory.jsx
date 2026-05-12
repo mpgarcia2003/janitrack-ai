@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export default function Inventory() {
     queryKey: ["inventory", tenantId],
     queryFn: () =>
       tenantId
-        ? base44.entities.InventoryItem.filter({ tenant_id: tenantId }, "-created_date")
+        ? entities.InventoryItem.filter({ tenant_id: tenantId }, "-created_at")
         : Promise.resolve([]),
     enabled: !!tenantId,
   });
@@ -55,7 +55,7 @@ export default function Inventory() {
   const clientsQuery = useQuery({
     queryKey: ["clients", tenantId],
     queryFn: () =>
-      tenantId ? base44.entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
+      tenantId ? entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
     enabled: !!tenantId,
   });
 
@@ -64,7 +64,7 @@ export default function Inventory() {
 
   const createMutation = useMutation({
     mutationFn: (data) =>
-      base44.entities.InventoryItem.create({ ...data, tenant_id: tenantId }),
+      entities.InventoryItem.create({ ...data, tenant_id: tenantId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setShowAddDialog(false);
@@ -77,7 +77,7 @@ export default function Inventory() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.InventoryItem.delete(id),
+    mutationFn: (id) => entities.InventoryItem.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setDeletingItem(null);

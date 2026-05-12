@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,16 +59,16 @@ export default function Clients() {
     queryKey: isSuperAdmin ? ["all-clients"] : ["clients", tenantId],
     queryFn: () =>
       isSuperAdmin
-        ? base44.entities.Client.list("-created_date")
+        ? entities.Client.list("-created_at")
         : tenantId
-        ? base44.entities.Client.filter({ tenant_id: tenantId }, "-created_date")
+        ? entities.Client.filter({ tenant_id: tenantId }, "-created_at")
         : Promise.resolve([]),
     enabled: isSuperAdmin || !!tenantId,
   });
 
   const tenantsQuery = useQuery({
     queryKey: ["all-tenants"],
-    queryFn: () => base44.entities.Tenant.list(),
+    queryFn: () => entities.Tenant.list(),
     enabled: isSuperAdmin,
   });
 
@@ -76,9 +76,9 @@ export default function Clients() {
     queryKey: ["areas", isSuperAdmin ? "all" : tenantId],
     queryFn: () =>
       isSuperAdmin
-        ? base44.entities.Area.list()
+        ? entities.Area.list()
         : tenantId
-        ? base44.entities.Area.filter({ tenant_id: tenantId })
+        ? entities.Area.filter({ tenant_id: tenantId })
         : Promise.resolve([]),
     enabled: isSuperAdmin || !!tenantId,
   });
@@ -88,7 +88,7 @@ export default function Clients() {
   const areas = areasQuery.data ?? [];
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Client.create(data),
+    mutationFn: (data) => entities.Client.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
       queryClient.invalidateQueries({ queryKey: ["all-clients"] });
@@ -104,7 +104,7 @@ export default function Clients() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Client.update(id, data),
+    mutationFn: ({ id, data }) => entities.Client.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
       queryClient.invalidateQueries({ queryKey: ["all-clients"] });
@@ -119,7 +119,7 @@ export default function Clients() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Client.delete(id),
+    mutationFn: (id) => entities.Client.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
       queryClient.invalidateQueries({ queryKey: ["all-clients"] });
@@ -145,7 +145,7 @@ export default function Clients() {
     backfillRef.current = true;
     Promise.all(
       needsBackfill.map((c) =>
-        base44.entities.Client.update(c.id, {
+        entities.Client.update(c.id, {
           project_qr_token: c.project_qr_token ?? randToken("proj"),
           feedback_qr_token: c.feedback_qr_token ?? randToken("fac_fb"),
           inventory_qr_token: c.inventory_qr_token ?? randToken("inv"),

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { base44Public } from "@/components/PublicAPIClient";
+import { apiInvoke } from "@/lib/api-client";
+import { uploadFile } from "@/lib/storage";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,7 @@ export default function ScanCheckIn() {
   const tokenInfoQuery = useQuery({
     queryKey: ["scan-token", token],
     queryFn: async () => {
-      const response = await base44Public.functions.invoke("validateQRToken", {
+      const response = await apiInvoke("validate-qr-token", {
         token,
         tokenType: "area",
       });
@@ -65,13 +66,13 @@ export default function ScanCheckIn() {
     mutationFn: async (formValues) => {
       let photo_url = null;
       if (photo) {
-        const { file_url } = await base44Public.integrations.Core.UploadFile({ file: photo });
+        const { file_url } = await uploadFile({ file: photo, folder: "check-ins" });
         photo_url = file_url;
       }
       const timezone =
         typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "America/New_York";
 
-      const response = await base44Public.functions.invoke("recordCheckIn", {
+      const response = await apiInvoke("record-check-in", {
         token,
         cleaner_name: formValues.cleanerName,
         notes: formValues.notes,

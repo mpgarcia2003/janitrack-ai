@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export default function Areas() {
     queryKey: ["areas", tenantId],
     queryFn: () =>
       tenantId
-        ? base44.entities.Area.filter({ tenant_id: tenantId }, "-created_date")
+        ? entities.Area.filter({ tenant_id: tenantId }, "-created_at")
         : Promise.resolve([]),
     enabled: !!tenantId,
   });
@@ -53,7 +53,7 @@ export default function Areas() {
   const clientsQuery = useQuery({
     queryKey: ["clients", tenantId],
     queryFn: () =>
-      tenantId ? base44.entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
+      tenantId ? entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
     enabled: !!tenantId,
   });
 
@@ -61,7 +61,7 @@ export default function Areas() {
   const clients = clientsQuery.data ?? [];
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Area.create({ ...data, tenant_id: tenantId }),
+    mutationFn: (data) => entities.Area.create({ ...data, tenant_id: tenantId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["areas"] });
       setShowDialog(false);
@@ -75,7 +75,7 @@ export default function Areas() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Area.update(id, data),
+    mutationFn: ({ id, data }) => entities.Area.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["areas"] });
       setShowDialog(false);
@@ -89,7 +89,7 @@ export default function Areas() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Area.delete(id),
+    mutationFn: (id) => entities.Area.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["areas"] });
       setDeletingArea(null);
@@ -103,7 +103,7 @@ export default function Areas() {
 
   const createTestAreasMutation = useMutation({
     mutationFn: async (testAreasData) =>
-      Promise.all(testAreasData.map((data) => base44.entities.Area.create({ ...data, tenant_id: tenantId }))),
+      Promise.all(testAreasData.map((data) => entities.Area.create({ ...data, tenant_id: tenantId }))),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["areas"] });
       toast.success("Test areas created");

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Clock, User, Edit, AlertCircle, Trash2, CheckCircle2 } from "lucide-react";
 import { format, isBefore, differenceInDays } from "date-fns";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertDialog,
@@ -32,7 +32,7 @@ export default function ProjectCard({ project, onEdit, onDelete }) {
   const toggleCompleteMutation = useMutation({
     mutationFn: async () => {
       const isCompleting = project.status !== 'completed';
-      return base44.entities.Project.update(project.id, {
+      return entities.Project.update(project.id, {
         status: isCompleting ? 'completed' : project.status === 'blocked' ? 'blocked' : 'in_progress',
         completed_at: isCompleting ? new Date().toISOString() : null
       });

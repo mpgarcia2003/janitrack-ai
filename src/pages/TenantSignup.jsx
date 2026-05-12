@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,13 @@ import { toast } from "@/lib/toast";
 import { reportError } from "@/lib/error-reporting";
 import { trackEvent, EVENTS } from "@/lib/analytics";
 
+const slugify = (name) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50);
+
 export default function TenantSignup() {
   const { user, refetchUser } = useAuth();
   const navigate = useNavigate();
@@ -19,11 +26,8 @@ export default function TenantSignup() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // If the user already has a tenant, route them to the dashboard.
   React.useEffect(() => {
-    if (user?.tenant_id) {
-      navigate("/Dashboard", { replace: true });
-    }
+    if (user?.tenant_id) navigate("/Dashboard", { replace: true });
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
@@ -32,39 +36,46 @@ export default function TenantSignup() {
     setError(null);
 
     try {
-      const tenant = await base44.entities.Tenant.create({
-        name: companyName,
-        slug: companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        active: true,
-      });
+      // 1. Create the tenant.
+      const baseSlug = slugify(companyName) || `tenant-${Date.now()}`;
+      const { data: tenant, error: tenantError } = await supabase
+        .from("tenants")
+        .insert({ name: companyName.trim(), slug: `${baseSlug}-${Date.now().toString(36)}`, active: true })
+        .select()
+        .single();
+      if (tenantError) throw tenantError;
 
-      await base44.auth.updateMe({
-        tenant_id: tenant.id,
-        user_role: "tenant_owner",
-        phone: phone || "",
-      });
+      // 2. Attach this user to the tenant + mark them tenant_owner.
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ tenant_id: tenant.id, user_role: "tenant_owner", phone: phone || null })
+        .eq("id", user.id);
+      if (profileError) throw profileError;
 
-      const plans = await base44.entities.SubscriptionPlan.filter({ slug: "free" });
-      const freePlan = plans?.[0];
-      if (!freePlan) {
-        throw new Error("Free plan not found. Please contact support.");
-      }
+      // 3. Create a trial subscription on the Free plan.
+      const { data: plan, error: planError } = await supabase
+        .from("subscription_plans")
+        .select("id")
+        .eq("slug", "free")
+        .maybeSingle();
+      if (planError) throw planError;
+      if (!plan) throw new Error("Free plan not found. Re-run the seed SQL in Supabase.");
 
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + 14);
-      await base44.entities.Subscription.create({
+      const { error: subError } = await supabase.from("subscriptions").insert({
         tenant_id: tenant.id,
-        plan_id: freePlan.id,
+        plan_id: plan.id,
         status: "trial",
         billing_cycle: "monthly",
         trial_ends_at: trialEnd.toISOString(),
         current_period_start: new Date().toISOString(),
         current_period_end: trialEnd.toISOString(),
       });
+      if (subError) throw subError;
 
       trackEvent(EVENTS.TENANT_SIGNUP_COMPLETED, { tenant_id: tenant.id, plan: "free" });
       toast.success("Account created. Welcome to JaniTrackAI!");
-
       await refetchUser();
       navigate("/Dashboard", { replace: true });
     } catch (err) {
@@ -85,15 +96,13 @@ export default function TenantSignup() {
               </div>
               <CardTitle className="text-3xl font-bold">JaniTrackAI</CardTitle>
             </div>
-            <p className="text-emerald-100 mt-2 text-lg">Complete Your Setup</p>
-            <p className="text-emerald-200 text-sm mt-1">Tell us about your company</p>
+            <p className="text-emerald-100 mt-2 text-lg">Set up your company</p>
+            <p className="text-emerald-200 text-sm mt-1">One more step</p>
           </CardHeader>
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <Label htmlFor="companyName" className="text-base">
-                  Company Name *
-                </Label>
+                <Label htmlFor="companyName" className="text-base">Company Name *</Label>
                 <Input
                   id="companyName"
                   required
@@ -105,9 +114,7 @@ export default function TenantSignup() {
               </div>
 
               <div>
-                <Label htmlFor="phone" className="text-base">
-                  Phone (Optional)
-                </Label>
+                <Label htmlFor="phone" className="text-base">Phone (Optional)</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -120,9 +127,8 @@ export default function TenantSignup() {
 
               <div className="bg-emerald-50 p-4 rounded-lg text-center">
                 <p className="text-sm text-gray-700">
-                  <strong>14-day free trial on the Free Plan</strong> — No credit card required
+                  <strong>14-day free trial</strong> on the Free plan — no credit card needed.
                 </p>
-                <p className="text-xs text-gray-600 mt-1">You won't be charged until your trial ends.</p>
               </div>
 
               {error ? (
@@ -132,12 +138,12 @@ export default function TenantSignup() {
               <Button
                 type="submit"
                 disabled={isSubmitting || !companyName.trim()}
-                className="w-full h-12 text-lg bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                className="w-full h-12 text-lg bg-emerald-600 hover:bg-emerald-700"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" aria-hidden="true" />
-                    Creating your account…
+                    Creating your workspace…
                   </>
                 ) : (
                   "Complete Setup & Start Trial"

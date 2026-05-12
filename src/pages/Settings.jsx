@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
+import { uploadFile } from "@/lib/storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,14 +24,14 @@ export default function Settings() {
     queryKey: ["tenant", tenantId],
     queryFn: async () => {
       if (!tenantId) return null;
-      const tenants = await base44.entities.Tenant.filter({ id: tenantId });
+      const tenants = await entities.Tenant.filter({ id: tenantId });
       return tenants?.[0] ?? null;
     },
     enabled: !!tenantId,
   });
 
   const updateTenantMutation = useMutation({
-    mutationFn: (data) => base44.entities.Tenant.update(tenantId, data),
+    mutationFn: (data) => entities.Tenant.update(tenantId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant"] });
       toast.success("Settings saved");
@@ -46,7 +47,7 @@ export default function Settings() {
     if (!file) return;
     setUploadingLogo(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadFile({ file, folder: "logos" });
       await updateTenantMutation.mutateAsync({ logo_url: file_url });
     } catch (error) {
       reportError(error, { where: "Settings.handleLogoUpload" });

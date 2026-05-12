@@ -3,19 +3,17 @@ import React from "react";
 import { Toaster as ToasterSonner } from "@/components/ui/sonner";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import VisualEditAgent from "@/lib/VisualEditAgent";
 import NavigationTracker from "@/lib/NavigationTracker";
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
-import { setupIframeMessaging } from "./lib/iframe-messaging";
 import PageNotFound from "./lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
-import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { RequireAuth, RequireTenant } from "@/components/RouteGuards";
 import Layout from "@/Layout";
 
-// Pages
 import Home from "@/pages/Home";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
 import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import Areas from "@/pages/Areas";
@@ -29,34 +27,19 @@ import Billing from "@/pages/Billing";
 import SuperAdmin from "@/pages/SuperAdmin";
 import TenantSignup from "@/pages/TenantSignup";
 
-// Public (QR) pages
 import ScanCheckIn from "@/pages/ScanCheckIn";
 import FeedbackQR from "@/pages/FeedbackQR";
 import NewProjectQR from "@/pages/NewProjectQR";
 import InventoryAccess from "@/pages/InventoryAccess";
 
-setupIframeMessaging();
-
-/**
- * Root index route: send authenticated users to the Dashboard, anyone else
- * to the marketing landing page.
- */
 function RootRoute() {
-  const { isAuthenticated, isLoadingAuth, isLoadingPublicSettings } = useAuth();
+  const { isAuthenticated, isLoadingAuth } = useAuth();
   const location = useLocation();
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    // Render the landing page while we figure out who the visitor is — feels faster.
-    return <Home />;
-  }
-  if (isAuthenticated) {
-    return <Navigate to="/Dashboard" replace state={{ from: location }} />;
-  }
+  if (isLoadingAuth) return <Home />;
+  if (isAuthenticated) return <Navigate to="/Dashboard" replace state={{ from: location }} />;
   return <Home />;
 }
 
-/**
- * Wrap an authenticated page with the global Layout + tenant requirement.
- */
 function Authenticated({ children }) {
   return (
     <RequireAuth>
@@ -68,25 +51,20 @@ function Authenticated({ children }) {
 }
 
 function AppShell() {
-  const { authError } = useAuth();
-
-  if (authError?.type === "user_not_registered") {
-    return <UserNotRegisteredError />;
-  }
-
   return (
     <Routes>
-      {/* Root + marketing */}
       <Route path="/" element={<RootRoute />} />
       <Route path="/Home" element={<Home />} />
+      <Route path="/Login" element={<Login />} />
+      <Route path="/Signup" element={<Signup />} />
 
-      {/* Public QR flows — never gated, never wrapped in Layout */}
+      {/* Public QR flows */}
       <Route path="/ScanCheckIn" element={<ScanCheckIn />} />
       <Route path="/FeedbackQR" element={<FeedbackQR />} />
       <Route path="/NewProjectQR" element={<NewProjectQR />} />
       <Route path="/InventoryAccess" element={<InventoryAccess />} />
 
-      {/* Onboarding — requires auth but tolerates missing tenant_id */}
+      {/* Onboarding */}
       <Route
         path="/TenantSignup"
         element={
@@ -96,7 +74,6 @@ function AppShell() {
         }
       />
 
-      {/* Authenticated app */}
       <Route path="/Dashboard" element={<Authenticated><Dashboard /></Authenticated>} />
       <Route path="/Clients" element={<Authenticated><Clients /></Authenticated>} />
       <Route path="/Areas" element={<Authenticated><Areas /></Authenticated>} />
@@ -125,7 +102,6 @@ function App() {
           </AuthProvider>
         </BrowserRouter>
         <ToasterSonner />
-        <VisualEditAgent />
       </QueryClientProvider>
     </ErrorBoundary>
   );

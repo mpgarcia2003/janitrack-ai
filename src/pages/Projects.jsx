@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,13 +34,13 @@ export default function Projects() {
     queryKey: ["projects", tenantId],
     queryFn: () =>
       tenantId
-        ? base44.entities.Project.filter({ tenant_id: tenantId }, "-created_date")
+        ? entities.Project.filter({ tenant_id: tenantId }, "-created_at")
         : Promise.resolve([]),
     enabled: !!tenantId,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Project.delete(id),
+    mutationFn: (id) => entities.Project.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Project deleted");

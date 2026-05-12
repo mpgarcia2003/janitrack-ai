@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
+import { uploadFile } from "@/lib/storage";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,11 +22,11 @@ export default function InventoryCountDialog({ item }) {
     mutationFn: async (data) => {
       let photo_url = null;
       if (data.photo) {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: data.photo });
+        const { file_url } = await uploadFile({ file: data.photo, folder: "inventory-counts" });
         photo_url = file_url;
       }
 
-      await base44.entities.InventoryCount.create({
+      await entities.InventoryCount.create({
         tenant_id: item.tenant_id,
         client_id: item.client_id,
         inventory_id: item.id,
@@ -38,7 +39,7 @@ export default function InventoryCountDialog({ item }) {
         count_timestamp: new Date().toISOString(),
       });
 
-      await base44.entities.InventoryItem.update(item.id, {
+      await entities.InventoryItem.update(item.id, {
         on_hand: data.quantity,
         last_count_at: new Date().toISOString(),
       });

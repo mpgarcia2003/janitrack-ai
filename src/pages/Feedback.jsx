@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,20 +26,20 @@ export default function Feedback() {
     queryKey: ["feedbacks", tenantId],
     queryFn: () =>
       tenantId
-        ? base44.entities.Feedback.filter({ tenant_id: tenantId }, "-feedback_timestamp", 500)
+        ? entities.Feedback.filter({ tenant_id: tenantId }, "-feedback_timestamp", 500)
         : Promise.resolve([]),
     enabled: !!tenantId,
   });
   const clientsQuery = useQuery({
     queryKey: ["clients", tenantId],
     queryFn: () =>
-      tenantId ? base44.entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
+      tenantId ? entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
     enabled: !!tenantId,
   });
   const areasQuery = useQuery({
     queryKey: ["areas", tenantId],
     queryFn: () =>
-      tenantId ? base44.entities.Area.filter({ tenant_id: tenantId }) : Promise.resolve([]),
+      tenantId ? entities.Area.filter({ tenant_id: tenantId }) : Promise.resolve([]),
     enabled: !!tenantId,
   });
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,12 +20,12 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
   const { data: clients = [] } = useQuery({
     queryKey: ["clients", tenantId],
     queryFn: () =>
-      tenantId ? base44.entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
+      tenantId ? entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
     enabled: !!tenantId,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Project.create({ ...data, tenant_id: tenantId }),
+    mutationFn: (data) => entities.Project.create({ ...data, tenant_id: tenantId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       onOpenChange(false);
@@ -39,7 +39,7 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Project.update(id, data),
+    mutationFn: ({ id, data }) => entities.Project.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       onOpenChange(false);

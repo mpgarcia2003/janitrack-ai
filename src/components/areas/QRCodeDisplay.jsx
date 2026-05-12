@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { apiInvoke } from "@/lib/api-client";
 import { qrUrls } from "@/lib/qr-urls";
 import { trackEvent, EVENTS } from "@/lib/analytics";
 import { reportError } from "@/lib/error-reporting";
@@ -12,7 +12,7 @@ export default function QRCodeDisplay({ token, areaName, clientCode, clientName 
   const downloadBrandedQR = async () => {
     try {
       trackEvent(EVENTS.QR_CODE_DOWNLOADED, { type: "cleaning", token });
-      const response = await base44.functions.invoke("generateBrandedQR", {
+      const response = await apiInvoke("generate-branded-qr", {
         url: scanUrl,
         qrType: "cleaning",
         clientName,
@@ -20,7 +20,7 @@ export default function QRCodeDisplay({ token, areaName, clientCode, clientName 
       });
       const win = window.open("", "_blank");
       if (!win) return;
-      win.document.write(response.data);
+      win.document.write(response.data?.html ?? "");
       win.document.close();
       setTimeout(() => win.print(), 500);
     } catch (error) {

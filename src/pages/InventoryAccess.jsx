@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44Public } from "@/components/PublicAPIClient";
+import { apiInvoke } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,7 @@ export default function InventoryAccess() {
   const inventoryQuery = useQuery({
     queryKey: ["inventory-access", token],
     queryFn: async () => {
-      const response = await base44Public.functions.invoke("getAreaInventory", { token });
+      const response = await apiInvoke("get-area-inventory", { token });
       if (response.data?.error) throw new Error(response.data.error);
       return response.data; // { client, items }
     },

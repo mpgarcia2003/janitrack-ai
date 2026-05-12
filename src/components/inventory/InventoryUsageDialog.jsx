@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { entities } from "@/lib/db";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ export default function InventoryUsageDialog({ item }) {
 
   const createUsageMutation = useMutation({
     mutationFn: async (data) => {
-      await base44.entities.InventoryUsage.create({
+      await entities.InventoryUsage.create({
         tenant_id: item.tenant_id,
         client_id: item.client_id,
         inventory_id: item.id,
@@ -31,7 +31,7 @@ export default function InventoryUsageDialog({ item }) {
       });
 
       const newQuantity = item.on_hand - data.quantity;
-      await base44.entities.InventoryItem.update(item.id, { on_hand: Math.max(0, newQuantity) });
+      await entities.InventoryItem.update(item.id, { on_hand: Math.max(0, newQuantity) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
