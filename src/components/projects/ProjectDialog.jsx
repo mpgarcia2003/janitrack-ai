@@ -1,101 +1,91 @@
-
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import { toast } from "@/lib/toast";
+import { reportError } from "@/lib/error-reporting";
 
 export default function ProjectDialog({ open, onOpenChange, editingProject, setEditingProject }) {
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
+  const tenantId = user?.tenant_id;
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
-  }, []);
-
   const { data: clients = [] } = useQuery({
-    queryKey: ['clients', user?.tenant_id],
-    queryFn: () => user?.tenant_id
-      ? base44.entities.Client.filter({ tenant_id: user.tenant_id })
-      : Promise.resolve([]),
-    enabled: !!user?.tenant_id,
+    queryKey: ["clients", tenantId],
+    queryFn: () =>
+      tenantId ? base44.entities.Client.filter({ tenant_id: tenantId }) : Promise.resolve([]),
+    enabled: !!tenantId,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Project.create({
-      ...data,
-      tenant_id: user.tenant_id // Ensure tenant_id is set for new projects
-    }),
+    mutationFn: (data) => base44.entities.Project.create({ ...data, tenant_id: tenantId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       onOpenChange(false);
       setEditingProject(null);
+      toast.success("Project created");
+    },
+    onError: (error) => {
+      reportError(error, { where: "ProjectDialog.create" });
+      toast.error(`Failed to create project: ${error?.message ?? "Unknown error"}`);
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Project.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       onOpenChange(false);
       setEditingProject(null);
+      toast.success("Project updated");
+    },
+    onError: (error) => {
+      reportError(error, { where: "ProjectDialog.update" });
+      toast.error(`Failed to update project: ${error?.message ?? "Unknown error"}`);
     },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    
     const data = {
-      // tenant_id: 'default-tenant', // This will now be handled by the createMutation or the existing project's tenant_id
-      client_id: formData.get('client_id'),
-      title: formData.get('title'),
-      description: formData.get('description'),
-      status: formData.get('status') || 'open',
-      priority: formData.get('priority') || 'medium',
-      due_date: formData.get('due_date') || null,
-      assigned_to_name: formData.get('assigned_to_name'),
-      estimated_hours: parseFloat(formData.get('estimated_hours')) || null,
+      client_id: formData.get("client_id"),
+      title: formData.get("title"),
+      description: formData.get("description"),
+      status: formData.get("status") ?? "open",
+      priority: formData.get("priority") ?? "medium",
+      due_date: formData.get("due_date") || null,
+      assigned_to_name: formData.get("assigned_to_name"),
+      estimated_hours: Number.parseFloat(formData.get("estimated_hours")) || null,
     };
-
-    if (editingProject) {
-      updateMutation.mutate({ id: editingProject.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
+    if (editingProject) updateMutation.mutate({ id: editingProject.id, data });
+    else createMutation.mutate(data);
   };
 
   return (
-    <Dialog open={open} onOpenChange={(val) => {
-      onOpenChange(val);
-      if (!val) setEditingProject(null);
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        onOpenChange(val);
+        if (!val) setEditingProject(null);
+      }}
+    >
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-5 h-5 mr-2" />
+        <Button className="bg-emerald-600 hover:bg-emerald-700">
+          <Plus className="w-5 h-5 mr-2" aria-hidden="true" />
           New Project
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{editingProject ? 'Edit Project' : 'Create New Project'}</DialogTitle>
+          <DialogTitle>{editingProject ? "Edit Project" : "Create New Project"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -105,7 +95,7 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
               <SelectContent>
-                {clients.map(client => (
+                {clients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.name}
                   </SelectItem>
@@ -116,9 +106,9 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
 
           <div>
             <Label htmlFor="title">Project Title *</Label>
-            <Input 
-              id="title" 
-              name="title" 
+            <Input
+              id="title"
+              name="title"
               required
               defaultValue={editingProject?.title}
               placeholder="e.g., HVAC System Maintenance"
@@ -127,11 +117,11 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
 
           <div>
             <Label htmlFor="description">Description</Label>
-            <Textarea 
-              id="description" 
+            <Textarea
+              id="description"
               name="description"
               defaultValue={editingProject?.description}
-              placeholder="Project details and requirements..."
+              placeholder="Project details and requirements…"
               className="h-24"
             />
           </div>
@@ -139,7 +129,7 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select name="status" defaultValue={editingProject?.status || 'open'}>
+              <Select name="status" defaultValue={editingProject?.status ?? "open"}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -153,7 +143,7 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
             </div>
             <div>
               <Label htmlFor="priority">Priority</Label>
-              <Select name="priority" defaultValue={editingProject?.priority || 'medium'}>
+              <Select name="priority" defaultValue={editingProject?.priority ?? "medium"}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -170,18 +160,13 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="due_date">Due Date</Label>
-              <Input 
-                id="due_date" 
-                name="due_date" 
-                type="date"
-                defaultValue={editingProject?.due_date}
-              />
+              <Input id="due_date" name="due_date" type="date" defaultValue={editingProject?.due_date} />
             </div>
             <div>
               <Label htmlFor="estimated_hours">Est. Hours</Label>
-              <Input 
-                id="estimated_hours" 
-                name="estimated_hours" 
+              <Input
+                id="estimated_hours"
+                name="estimated_hours"
                 type="number"
                 step="0.5"
                 defaultValue={editingProject?.estimated_hours}
@@ -192,8 +177,8 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
 
           <div>
             <Label htmlFor="assigned_to_name">Assigned To</Label>
-            <Input 
-              id="assigned_to_name" 
+            <Input
+              id="assigned_to_name"
               name="assigned_to_name"
               defaultValue={editingProject?.assigned_to_name}
               placeholder="Team member name"
@@ -201,8 +186,8 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               variant="outline"
               onClick={() => {
                 onOpenChange(false);
@@ -211,8 +196,16 @@ export default function ProjectDialog({ open, onOpenChange, editingProject, setE
             >
               Cancel
             </Button>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-              {editingProject ? 'Update' : 'Create'} Project
+            <Button
+              type="submit"
+              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
+              {createMutation.isPending || updateMutation.isPending
+                ? "Saving…"
+                : editingProject
+                ? "Update Project"
+                : "Create Project"}
             </Button>
           </div>
         </form>
